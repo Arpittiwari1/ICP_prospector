@@ -101,11 +101,6 @@ Each is a **self-contained swap** — no cross-file refactors.
 
 ---
 
-## Architecture
-
-See `architecture.md` for full component breakdown.
-See `decision.md` for design rationale on every major choice.
-
 ---
 
 ## Clean-Room Implementation
