@@ -1,17 +1,29 @@
 # Python
 .venv/
 venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets
+.env
+.env.*
 
 # Data
-lead-prospector/backend/data/
+backend/data/
 
 # Node
-frontend-react/node_modules
-frontend-react/dist
+frontend/node_modules
+frontend/dist
 
 # Editor
 .vscode/
 .idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Logs
 *.log

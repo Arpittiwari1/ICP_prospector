@@ -12,6 +12,8 @@ Runs end-to-end with **mock data** (zero API keys) for immediate demo. Swap to r
 
 ## Quick Start
 
+**Backend (API)** — http://localhost:8000
+
 ```bash
 cd backend
 python -m venv .venv
@@ -22,7 +24,17 @@ cp .env.example .env              # mock mode by default
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open `frontend/index.html` in a browser → UI at `http://localhost:8000/docs` for API docs.
+API docs at `http://localhost:8000/docs`.
+
+**Frontend (React UI)** — http://localhost:8080
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The Vite dev server proxies `/api` to the backend on port 8000, and the backend allows the frontend origin in `allowed_origins`.
 
 ---
 
@@ -34,7 +46,7 @@ Open `frontend/index.html` in a browser → UI at `http://localhost:8000/docs` f
 - **ICP-pass ≠ email-sendable**: Leads without verified email go to `passed_without_email`, not dropped
 - **Chunked pipeline**: Flat memory, early exit when goal hit
 - **CSV output**: Swap for Google Sheets in one file
-- **Single-file frontend**: No build step, opens by double-click
+- **Rich React frontend**: Full ICP filter builder, live job progress, leads table
 
 ---
 
