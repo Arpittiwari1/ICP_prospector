@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blitz Prospector — Lead Search</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">⚡ <strong>Blitz Prospector</strong><span class="brand-sub">lead search &amp; enrichment</span></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="people">People</button>
+    <button class="tab" data-tab="companies">Companies</button>
+    <button class="tab" data-tab="employees">Company Staff</button>
+    <button class="tab" data-tab="waterfall">Waterfall ICP</button>
+    <button class="tab" data-tab="lookup">Lookups</button>
+    <button class="tab" data-tab="pulls">Pulls <span id="pulls-dot" class="dot hidden"></span></button>
+  </nav>
+  <div class="account" id="account">
+    <select id="client-select" class="client-select" title="Active client — searches are tracked per client">
+      <option value="">No client</option>
+    </select>
+    <button id="btn-dnc" class="btn btn-ghost">🚫 DNC</button>
+    <span id="credits-badge" class="badge hidden"></span>
+    <button id="btn-key" class="btn btn-ghost">Connect API key</button>
+  </div>
+</header>
+
+<!-- ══════════════════ API KEY MODAL ══════════════════ -->
+<div class="modal-backdrop hidden" id="key-modal">
+  <div class="modal">
+    <h2>Connect your Blitz API key</h2>
+    <p class="muted">Your key is stored only in this browser and sent directly to <code>api.blitz-api.ai</code> through your local server. Nothing else sees it.</p>
+    <input type="password" id="key-input" placeholder="blitz_xxxxxxxxxxxxxxxx" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="key-cancel">Cancel</button>
+      <button class="btn btn-primary" id="key-save">Verify &amp; connect</button>
+    </div>
+    <div id="key-status" class="key-status"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ DO-NOT-CONTACT MODAL ══════════════════ -->
+<div class="modal-backdrop hidden" id="dnc-modal">
+  <div class="modal modal-wide">
+    <h2>Do-not-contact list</h2>
+    <p class="muted" id="dnc-client-label">No client selected.</p>
+    <p class="muted small">A hard exclusion for this client — existing customers, unsubscribes, competitors. Applied automatically during Pull leads and the quick Search tab; never included in any export for this client.</p>
+
+    <label class="lbl">Add emails or website domains <span class="hint">comma, semicolon, or newline separated</span></label>
+    <textarea id="dnc-input" class="dnc-textarea" rows="4" placeholder="jane@acme.com, acme.com, competitor.com"></textarea>
+    <div class="modal-actions" style="justify-content: flex-start;">
+      <button class="btn btn-primary" id="dnc-add">Add to list</button>
+      <span class="muted small" id="dnc-summary"></span>
+    </div>
+
+    <div class="dnc-columns">
+      <div>
+        <label class="lbl">Blocked emails</label>
+        <div class="dnc-list" id="dnc-emails"></div>
+      </div>
+      <div>
+        <label class="lbl">Blocked domains</label>
+        <div class="dnc-list" id="dnc-domains"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-link" id="dnc-clear">Clear entire list</button>
+      <button class="btn btn-primary" id="dnc-close">Done</button>
+    </div>
+  </div>
+</div>
+
+<main class="layout">
+
+  <!-- ══════════════════ PEOPLE TAB ══════════════════ -->
+  <section class="pane active" id="pane-people">
+    <aside class="filters">
+      <div class="filters-head">
+        <h3>Person filters</h3>
+        <button class="btn-link" data-clear="people">Clear all</button>
+      </div>
+
+      <div class="preset-box">
+        <label class="lbl">Saved ICP presets</label>
+        <div class="preset-row">
+          <select id="icp-preset-select"><option value="">— Load a preset —</option></select>
+          <button class="btn" id="btn-preset-load">Load</button>
+        </div>
+        <div class="preset-row">
+          <input type="text" class="txt" id="icp-preset-name" placeholder="Name this ICP, e.g. Client A CMOs">
+          <button class="btn btn-primary" id="btn-preset-save">Save</button>
+        </div>
+        <button class="btn-link" id="btn-preset-delete">Delete selected preset</button>
+      </div>
+
+      <details open><summary>Job titles</summary>
+        <label class="lbl">Include titles <span class="hint">Enter to add · use [Exact Title] for exact match</span></label>
+        <div class="chips-input" data-chips="p_titles"><input placeholder="e.g. Chief Marketing Officer"></div>
+        <label class="lbl">Exclude titles</label>
+        <div class="chips-input" data-chips="p_titles_exclude"><input placeholder="e.g. assistant"></div>
+        <label class="check"><input type="checkbox" id="p_titles_exact"> Exact title match (wraps in [brackets])</label>
+        <label class="check"><input type="checkbox" id="p_headline"> Also search LinkedIn headline</label>
+        <label class="check"><input type="checkbox" id="p_enforce_current" checked> Only current role <span class="hint">drops a match based on a past, not current, title</span></label>
+      </details>
+
+      <details><summary>Seniority level</summary>
+        <div class="check-grid" id="p_levels"></div>
+      </details>
+
+      <details><summary>Department / function</summary>
+        <div class="check-grid" id="p_functions"></div>
+      </details>
+
+      <details><summary>Person location</summary>
+        <label class="lbl">Countries</label>
+        <div class="chips-input" data-chips="p_countries" data-suggest="countries"><input placeholder="Type country…"></div>
+        <label class="lbl">Cities</label>
+        <div class="chips-input" data-chips="p_cities"><input placeholder="e.g. New York"></div>
+        <label class="lbl">Sales regions</label>
+        <div class="check-row" id="p_regions"></div>
+        <label class="lbl">Continents</label>
+        <div class="check-grid" id="p_continents"></div>
+        <label class="lbl">Min LinkedIn connections</label>
+        <input type="number" class="num" id="p_min_connections" min="0" placeholder="e.g. 100">
+      </details>
+
+      <div class="filters-head mt"><h3>Company filters</h3></div>
+
+      <details open><summary>Company size</summary>
+        <div class="check-grid" id="pc_ranges"></div>
+        <div class="range-row">
+          <input type="number" class="num" id="pc_emp_min" placeholder="Min employees">
+          <input type="number" class="num" id="pc_emp_max" placeholder="Max employees">
+        </div>
+      </details>
+
+      <details><summary>Industry</summary>
+        <label class="lbl">Include industries</label>
+        <div class="chips-input" data-chips="pc_industries" data-suggest="industries"><input placeholder="Type industry…"></div>
+        <label class="lbl">Exclude industries</label>
+        <div class="chips-input" data-chips="pc_industries_exclude" data-suggest="industries"><input placeholder="Type industry…"></div>
+      </details>
+
+      <details><summary>Company keywords &amp; name</summary>
+        <label class="lbl">Description keywords (include)</label>
+        <div class="chips-input" data-chips="pc_keywords"><input placeholder="e.g. SaaS"></div>
+        <label class="lbl">Description keywords (exclude)</label>
+        <div class="chips-input" data-chips="pc_keywords_exclude"><input placeholder="e.g. agency"></div>
+        <label class="lbl">Company name contains</label>
+        <div class="chips-input" data-chips="pc_names"><input placeholder="e.g. labs"></div>
+        <label class="lbl">Company name excludes</label>
+        <div class="chips-input" data-chips="pc_names_exclude"><input placeholder=""></div>
+        <label class="lbl">Specific company LinkedIn URLs</label>
+        <div class="chips-input" data-chips="pc_linkedin_urls"><input placeholder="https://www.linkedin.com/company/…"></div>
+        <label class="lbl">Company website URLs <span class="hint">paste a list — matched to companies automatically, ~1 credit each, cached</span></label>
+        <div class="chips-input" data-chips="pc_domains"><input placeholder="e.g. acme.com"></div>
+      </details>
+
+      <details><summary>Company HQ</summary>
+        <label class="lbl">HQ countries</label>
+        <div class="chips-input" data-chips="pc_countries" data-suggest="countries"><input placeholder="Type country…"></div>
+        <label class="lbl">HQ cities (include)</label>
+        <div class="chips-input" data-chips="pc_cities"><input placeholder="e.g. Austin"></div>
+        <label class="lbl">HQ sales regions</label>
+        <div class="check-row" id="pc_regions"></div>
+      </details>
+
+      <details><summary>Company type, age &amp; followers</summary>
+        <label class="lbl">Company type</label>
+        <div class="check-grid" id="pc_types"></div>
+        <div class="range-row">
+          <input type="number" class="num" id="pc_founded_min" placeholder="Founded ≥ year">
+          <input type="number" class="num" id="pc_founded_max" placeholder="Founded ≤ year">
+        </div>
+        <label class="lbl">Min LinkedIn followers</label>
+        <input type="number" class="num" id="pc_min_followers" min="0" placeholder="e.g. 1000">
+      </details>
+
+      <div class="search-actions">
+        <div class="tam-row">
+          <button class="btn btn-block" id="btn-tam-people" title="Check how many people match the current filters (costs 1 credit)">📊 Check TAM</button>
+          <div class="tam-line" id="people-tam"></div>
+        </div>
+        <div class="tam-row">
+          <button class="btn btn-block" id="btn-title-impact" title="Samples up to 50 real matches to estimate how many hold that title right now vs. only held it in the past — costs up to ~50 credits">📐 Estimate title-match impact</button>
+          <div class="tam-line" id="people-title-impact"></div>
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-search-people">Search people</button>
+        <label class="lbl">Campaign name <span class="hint">saved into the export + used-lead memory</span></label>
+        <input type="text" class="txt" id="p_campaign" placeholder="e.g. July outbound">
+        <div class="pull-row">
+          <input type="number" class="num" id="p_pull_count" value="100" min="1" max="50000">
+          <button class="btn btn-accent" id="btn-pull-leads" title="Runs on the server — survives closed tabs. Collects N unique leads, enriches, then downloads one Excel workbook.">Pull leads</button>
+        </div>
+        <label class="check"><input type="checkbox" id="p_auto_email" checked> Enrich verified emails while pulling</label>
+        <label class="check"><input type="checkbox" id="p_auto_phone"> Also enrich phone numbers (US, 5 credits)</label>
+        <label class="check"><input type="checkbox" id="p_auto_company" checked> Add industry + exact company size <span class="hint">1 credit per unique company, cached</span></label>
+        <label class="check"><input type="checkbox" id="p_skip_used"> Skip leads already used for this client</label>
+        <p class="muted small">Unchecked: previously used leads are still exported but tagged in the <code>used_in</code> column with the campaign they were used in.</p>
+      </div>
+    </aside>
+
+    <div class="results">
+      <div class="results-toolbar">
+        <div class="results-meta" id="people-meta">Run a search to see leads.</div>
+        <div class="results-buttons">
+          <button class="btn" id="btn-people-enrich-email" disabled>✉ Enrich emails</button>
+          <button class="btn" id="btn-people-enrich-phone" disabled>📞 Enrich phones</button>
+          <button class="btn" id="btn-people-enrich-company" disabled>🏢 Enrich company</button>
+          <button class="btn" id="btn-people-more" disabled>Load more</button>
+          <button class="btn btn-accent" id="btn-people-csv" disabled>⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="progress hidden" id="people-progress"><div class="progress-bar"></div><span class="progress-label"></span></div>
+      <div class="table-wrap"><table id="people-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ COMPANIES TAB ══════════════════ -->
+  <section class="pane" id="pane-companies">
+    <aside class="filters">
+      <div class="filters-head">
+        <h3>Company filters</h3>
+        <button class="btn-link" data-clear="companies">Clear all</button>
+      </div>
+
+      <details open><summary>Name &amp; keywords</summary>
+        <label class="lbl">Name contains</label>
+        <div class="chips-input" data-chips="c_names"><input placeholder="e.g. security"></div>
+        <label class="lbl">Name excludes</label>
+        <div class="chips-input" data-chips="c_names_exclude"><input placeholder=""></div>
+        <label class="lbl">Description keywords (include)</label>
+        <div class="chips-input" data-chips="c_keywords"><input placeholder="e.g. e-commerce"></div>
+        <label class="lbl">Description keywords (exclude)</label>
+        <div class="chips-input" data-chips="c_keywords_exclude"><input placeholder=""></div>
+      </details>
+
+      <details open><summary>Size</summary>
+        <div class="check-grid" id="c_ranges"></div>
+        <div class="range-row">
+          <input type="number" class="num" id="c_emp_min" placeholder="Min employees">
+          <input type="number" class="num" id="c_emp_max" placeholder="Max employees">
+        </div>
+      </details>
+
+      <details><summary>Industry</summary>
+        <label class="lbl">Include industries</label>
+        <div class="chips-input" data-chips="c_industries" data-suggest="industries"><input placeholder="Type industry…"></div>
+        <label class="lbl">Exclude industries</label>
+        <div class="chips-input" data-chips="c_industries_exclude" data-suggest="industries"><input placeholder="Type industry…"></div>
+      </details>
+
+      <details><summary>HQ location</summary>
+        <label class="lbl">HQ countries</label>
+        <div class="chips-input" data-chips="c_countries" data-suggest="countries"><input placeholder="Type country…"></div>
+        <label class="lbl">HQ cities (include)</label>
+        <div class="chips-input" data-chips="c_cities"><input placeholder="e.g. Berlin"></div>
+        <label class="lbl">HQ cities (exclude)</label>
+        <div class="chips-input" data-chips="c_cities_exclude"><input placeholder=""></div>
+        <label class="lbl">Sales regions</label>
+        <div class="check-row" id="c_regions"></div>
+        <label class="lbl">Continents</label>
+        <div class="check-grid" id="c_continents"></div>
+      </details>
+
+      <details><summary>Type, age &amp; followers</summary>
+        <label class="lbl">Company type</label>
+        <div class="check-grid" id="c_types"></div>
+        <div class="range-row">
+          <input type="number" class="num" id="c_founded_min" placeholder="Founded ≥ year">
+          <input type="number" class="num" id="c_founded_max" placeholder="Founded ≤ year">
+        </div>
+        <label class="lbl">Min LinkedIn followers</label>
+        <input type="number" class="num" id="c_min_followers" min="0" placeholder="e.g. 1000">
+      </details>
+
+      <div class="search-actions">
+        <div class="tam-row">
+          <button class="btn btn-block" id="btn-tam-companies" title="Check how many companies match the current filters (costs 1 credit)">📊 Check TAM</button>
+          <div class="tam-line" id="companies-tam"></div>
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-search-companies">Search companies</button>
+        <div class="pull-row">
+          <input type="number" class="num" id="c_pull_count" value="100" min="1" max="5000">
+          <button class="btn btn-accent" id="btn-pull-companies">Pull companies</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="results">
+      <div class="results-toolbar">
+        <div class="results-meta" id="companies-meta">Run a search to see companies.</div>
+        <div class="results-buttons">
+          <button class="btn" id="btn-companies-more" disabled>Load more</button>
+          <button class="btn" id="btn-companies-to-waterfall" disabled title="Send these companies to Waterfall ICP to find one decision-maker per account">🌊 Send to Waterfall</button>
+          <button class="btn btn-accent" id="btn-companies-csv" disabled>⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="progress hidden" id="companies-progress"><div class="progress-bar"></div><span class="progress-label"></span></div>
+      <div class="table-wrap"><table id="companies-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ EMPLOYEE FINDER TAB ══════════════════ -->
+  <section class="pane" id="pane-employees">
+    <aside class="filters">
+      <div class="filters-head"><h3>Company staff</h3><button class="btn-link" data-clear="employees">Clear all</button></div>
+      <details open><summary>Company</summary>
+        <label class="lbl">Company LinkedIn URL <span class="hint">or type a domain and hit Resolve</span></label>
+        <input type="text" class="txt" id="e_company_url" placeholder="https://www.linkedin.com/company/openai">
+        <div class="range-row">
+          <input type="text" class="txt" id="e_domain" placeholder="openai.com">
+          <button class="btn" id="btn-resolve-domain">Resolve</button>
+        </div>
+      </details>
+      <details open><summary>Filters</summary>
+        <label class="lbl">Seniority level</label>
+        <div class="check-grid" id="e_levels"></div>
+        <label class="lbl">Department / function</label>
+        <div class="check-grid" id="e_functions"></div>
+        <label class="lbl">Countries</label>
+        <div class="chips-input" data-chips="e_countries" data-suggest="countries"><input placeholder="Type country…"></div>
+        <label class="lbl">Sales regions</label>
+        <div class="check-row" id="e_regions"></div>
+        <label class="lbl">Min connections</label>
+        <input type="number" class="num" id="e_min_connections" min="0" placeholder="e.g. 100">
+      </details>
+      <div class="search-actions">
+        <button class="btn btn-primary btn-block" id="btn-search-employees">Find employees</button>
+      </div>
+    </aside>
+
+    <div class="results">
+      <div class="results-toolbar">
+        <div class="results-meta" id="employees-meta">Point at a company to list its people.</div>
+        <div class="results-buttons">
+          <button class="btn" id="btn-employees-enrich-email" disabled>✉ Enrich emails</button>
+          <button class="btn" id="btn-employees-enrich-company" disabled>🏢 Enrich company</button>
+          <button class="btn" id="btn-employees-more" disabled>Next page</button>
+          <button class="btn btn-accent" id="btn-employees-csv" disabled>⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="progress hidden" id="employees-progress"><div class="progress-bar"></div><span class="progress-label"></span></div>
+      <div class="table-wrap"><table id="employees-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ WATERFALL ICP TAB ══════════════════ -->
+  <section class="pane" id="pane-waterfall">
+    <aside class="filters">
+      <div class="filters-head"><h3>Waterfall ICP</h3><button class="btn-link" data-clear="waterfall">Clear all</button></div>
+      <p class="muted small">Finds the best decision-maker per company using an ordered title cascade: tier 1 first, falls through to lower tiers if nobody matches.</p>
+      <details open><summary>Target companies</summary>
+        <label class="lbl">Company LinkedIn URLs <span class="hint">one per chip — runs the cascade for each</span></label>
+        <div class="chips-input" data-chips="w_companies"><input placeholder="https://www.linkedin.com/company/…"></div>
+        <label class="lbl">Max matches per company</label>
+        <input type="number" class="num" id="w_max" value="1" min="1" max="10">
+      </details>
+      <details open><summary>Title cascade</summary>
+        <div id="w_cascade"></div>
+        <button class="btn btn-block" id="btn-add-tier">+ Add tier</button>
+      </details>
+      <div class="search-actions">
+        <button class="btn btn-primary btn-block" id="btn-run-waterfall">Run waterfall</button>
+        <label class="check"><input type="checkbox" id="w_auto_email" checked> Enrich verified emails</label>
+        <label class="check"><input type="checkbox" id="w_auto_company" checked> Add industry + exact company size</label>
+        <label class="check"><input type="checkbox" id="w_enforce_current" checked> Only current role <span class="hint">drops a match based on a past, not current, title</span></label>
+      </div>
+    </aside>
+
+    <div class="results">
+      <div class="results-toolbar">
+        <div class="results-meta" id="waterfall-meta">Add companies and a cascade, then run.</div>
+        <div class="results-buttons">
+          <button class="btn btn-accent" id="btn-waterfall-csv" disabled>⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="progress hidden" id="waterfall-progress"><div class="progress-bar"></div><span class="progress-label"></span></div>
+      <div class="table-wrap"><table id="waterfall-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ PULLS (JOBS) TAB ══════════════════ -->
+  <section class="pane" id="pane-pulls">
+    <div class="results">
+      <div class="results-toolbar">
+        <div class="results-meta" id="pulls-meta">Big lead pulls run here on the server — they keep going even if you close this page.</div>
+        <div class="results-buttons">
+          <button class="btn" id="btn-pulls-refresh">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="jobs-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ LOOKUPS TAB ══════════════════ -->
+  <section class="pane" id="pane-lookup">
+    <div class="lookup-grid">
+      <div class="card">
+        <h3>✉ Email finder</h3>
+        <p class="muted small">LinkedIn profile → validated work email. 1 credit on success.</p>
+        <input type="text" class="txt" id="l_email_url" placeholder="https://www.linkedin.com/in/…">
+        <button class="btn btn-primary" data-lookup="email">Find email</button>
+        <pre class="out" id="out-email"></pre>
+      </div>
+      <div class="card">
+        <h3>📞 Phone finder</h3>
+        <p class="muted small">LinkedIn profile → mobile/direct phone (US). 5 credits on success.</p>
+        <input type="text" class="txt" id="l_phone_url" placeholder="https://www.linkedin.com/in/…">
+        <button class="btn btn-primary" data-lookup="phone">Find phone</button>
+        <pre class="out" id="out-phone"></pre>
+      </div>
+      <div class="card">
+        <h3>🔁 Reverse email</h3>
+        <p class="muted small">Work email → full person profile.</p>
+        <input type="text" class="txt" id="l_rev_email" placeholder="jane@acme.com">
+        <button class="btn btn-primary" data-lookup="rev-email">Identify person</button>
+        <pre class="out" id="out-rev-email"></pre>
+      </div>
+      <div class="card">
+        <h3>🔁 Reverse phone</h3>
+        <p class="muted small">Phone number → full person profile.</p>
+        <input type="text" class="txt" id="l_rev_phone" placeholder="+14155551234">
+        <button class="btn btn-primary" data-lookup="rev-phone">Identify person</button>
+        <pre class="out" id="out-rev-phone"></pre>
+      </div>
+      <div class="card">
+        <h3>🏢 Company enrichment</h3>
+        <p class="muted small">Company LinkedIn URL → full firmographics.</p>
+        <input type="text" class="txt" id="l_company_url" placeholder="https://www.linkedin.com/company/…">
+        <button class="btn btn-primary" data-lookup="company">Enrich company</button>
+        <pre class="out" id="out-company"></pre>
+      </div>
+      <div class="card">
+        <h3>🌐 Domain ⇄ LinkedIn</h3>
+        <p class="muted small">Resolve either direction.</p>
+        <input type="text" class="txt" id="l_domain" placeholder="acme.com">
+        <button class="btn btn-primary" data-lookup="domain-to-li">Domain → LinkedIn</button>
+        <input type="text" class="txt" id="l_li_url" placeholder="https://www.linkedin.com/company/…">
+        <button class="btn btn-primary" data-lookup="li-to-domain">LinkedIn → domain</button>
+        <pre class="out" id="out-domain"></pre>
+      </div>
+      <div class="card">
+        <h3>🗺 Headcount by country</h3>
+        <p class="muted small">Company LinkedIn URL → employee split by country.</p>
+        <input type="text" class="txt" id="l_dist_country" placeholder="https://www.linkedin.com/company/…">
+        <button class="btn btn-primary" data-lookup="dist-country">Get distribution</button>
+        <pre class="out" id="out-dist-country"></pre>
+      </div>
+      <div class="card">
+        <h3>🏛 Headcount by department</h3>
+        <p class="muted small">Company LinkedIn URL → employee split by department.</p>
+        <input type="text" class="txt" id="l_dist_dept" placeholder="https://www.linkedin.com/company/…">
+        <button class="btn btn-primary" data-lookup="dist-dept">Get distribution</button>
+        <pre class="out" id="out-dist-dept"></pre>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

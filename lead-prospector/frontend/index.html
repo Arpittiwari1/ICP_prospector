@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Lead Prospector</title>
+<style>
+  body { font: 14px system-ui; margin: 2rem; max-width: 760px; }
+  input, button { font: inherit; padding: .4rem; }
+  label { display: block; margin: .6rem 0 .2rem; }
+  pre { background: #f5f5f5; padding: 1rem; overflow: auto; }
+  .row { display: flex; gap: .5rem; align-items: center; }
+</style>
+
+<h1>Lead Prospector</h1>
+
+<label>Titles (comma)</label>
+<input id="titles" value="CEO, Founder, CTO, VP Sales, Head of Marketing">
+
+<label>Countries (comma)</label>
+<input id="cc" value="NL, GB, DE">
+
+<label>Industries (comma)</label>
+<input id="inds" value="SaaS, Fintech">
+
+<label>Seniority (comma)</label>
+<input id="sen" value="founder, c_suite, vp, head">
+
+<label>Employee Min</label>
+<input id="emp_min" type="number" placeholder="e.g. 50">
+
+<label>Employee Max</label>
+<input id="emp_max" type="number" placeholder="e.g. 500">
+
+<label>Goal (sendable leads)</label>
+<input id="goal" type="number" value="25">
+
+<div class="row">
+  <button onclick="count()">Count</button>
+  <button onclick="run()">Run</button>
+  <a id="download" style="display:none; padding: .4rem .8rem; background: #2563eb; color: #fff; text-decoration: none; border-radius: 4px;" download>Download CSV</a>
+</div>
+
+<pre id="out"></pre>
+
+<script>
+const API = "http://localhost:8000";
+const icp = () => ({
+  titles: v("titles"),
+  countries: v("cc"),
+  industries: v("inds"),
+  seniority: v("sen"),
+  employees_min: n("emp_min"),
+  employees_max: n("emp_max"),
+});
+const v = id => document.getElementById(id).value.split(",").map(s=>s.trim()).filter(Boolean);
+const n = id => { const val = document.getElementById(id).value; return val ? parseInt(val) : null; };
+
+async function count() {
+  document.getElementById("download").style.display = "none";
+  const r = await fetch(API + "/api/count", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(icp())
+  });
+  show(await r.json());
+}
+
+async function run() {
+  document.getElementById("download").style.display = "none";
+  const r = await fetch(API + "/api/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ icp: icp(), goal: +document.getElementById("goal").value })
+  });
+  let job = await r.json();
+  const id = job.id;
+  show(job);
+  const t = setInterval(async () => {
+    job = await (await fetch(API + "/api/jobs/" + id)).json();
+    show(job);
+    if (job.status === "done" || job.status === "failed") {
+      clearInterval(t);
+      if (job.status === "done" && job.file) {
+        const dl = document.getElementById("download");
+        dl.href = API + "/api/jobs/" + id + "/download";
+        dl.style.display = "inline-block";
+      }
+    }
+  }, 800);
+}
+
+function show(o) {
+  document.getElementById("out").textContent = JSON.stringify(o, null, 2);
+}
+</script>

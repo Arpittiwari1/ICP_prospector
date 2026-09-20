@@ -1,0 +1,21 @@
+# Python
+.venv/
+venv/
+
+# Data
+lead-prospector/backend/data/
+
+# Node
+frontend-react/node_modules
+frontend-react/dist
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Ops
+opencode.json
