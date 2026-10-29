@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from .config import settings
 from .providers import get_provider
-from . import store, pipeline
+from . import store, pipeline, nl_icp
 
 app = FastAPI(title="Lead Prospector")
 app.add_middleware(CORSMiddleware, allow_origins=settings.origins,
@@ -18,6 +18,16 @@ def enums():
     return {"seniority": ["founder","c_suite","vp","head","manager","ic"],
             "countries": ["NL","GB","DE","US","SE","BE","FR"],
             "industries": ["SaaS","E-commerce","Fintech","Healthcare","Logistics"]}
+
+@app.post("/api/parse-icp")
+async def parse_icp(payload: dict):
+    prompt = str(payload.get("prompt", "")).strip()
+    if not prompt:
+        raise HTTPException(422, "prompt is required")
+    try:
+        return await nl_icp.parse_icp(prompt[:500])
+    except nl_icp.ParseError as e:
+        raise HTTPException(502, str(e))
 
 @app.post("/api/count")
 def count(icp: dict): return {"count": get_provider().count(icp)}

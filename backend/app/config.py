@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     verify_api_key: str = ""
     chunk_size: int = 50
     http_batch_size: int = 5
+    ollama_base: str = "http://localhost:11434"
+    ollama_api_key: str = ""          # set for Ollama cloud (https://ollama.com)
+    ollama_model: str = "llama3.1"
+    ollama_timeout: float = 60.0
     output_dir: str = "./data"
     allowed_origins: str = "http://localhost:5173,http://localhost:8000,http://localhost:8080,http://localhost:3000"
 
