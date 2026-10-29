@@ -3,8 +3,10 @@ import { useMutation } from '@tanstack/react-query'
 import { Alert, Button, Card, Flex, Input, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { api } from '../api/client'
-import { FILTER_LABELS, sanitizeFilters, type IcpForm } from '../lib/icp'
-import { patchFilters, setGoal } from '../store/icpSlice'
+import { FILTER_LABELS, sanitizeFilters, sectionCount, type IcpForm, type SectionKey } from '../lib/icp'
+import { patchFilters, setGoal, setOpenSections } from '../store/icpSlice'
+
+const SECTION_KEYS: SectionKey[] = ['person', 'location', 'company', 'hq']
 import { store, useAppDispatch } from '../store'
 
 const EXAMPLES = [
@@ -38,6 +40,10 @@ export function IcpBar({ onApplied }: Props) {
       const current = store.getState().icp.filters
       const previous = Object.fromEntries(Object.keys(patch).map((k) => [k, current[k as keyof IcpForm]])) as Partial<IcpForm>
       dispatch(patchFilters(patch))
+      // Expand every section the bar filled in, so the new values are visible.
+      const { icp } = store.getState()
+      const filled = SECTION_KEYS.filter((k) => sectionCount(icp.filters, k) > 0)
+      dispatch(setOpenSections([...new Set([...icp.open, ...filled])]))
       if (res.goal && res.goal > 0) dispatch(setGoal(Math.round(res.goal)))
       setApplied({ patch, previous })
       onApplied?.(patch)

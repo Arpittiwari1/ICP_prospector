@@ -1,46 +1,50 @@
 import { BankOutlined, EnvironmentOutlined, GlobalOutlined, UserOutlined } from '@ant-design/icons'
-import { Badge, Checkbox, Col, Collapse, Form, InputNumber, Row, Select, Switch, Typography, type FormInstance } from 'antd'
+import { Badge, Checkbox, Col, Collapse, Form, InputNumber, Row, Select, Switch, Typography, type FormInstance, type SelectProps } from 'antd'
+import type { CheckboxGroupProps } from 'antd/es/checkbox'
 import { useMemo } from 'react'
 import { BLITZ_DATA } from '../data/blitzData'
 import { sectionCount, type IcpForm, type SectionKey } from '../lib/icp'
-import { patchFilters } from '../store/icpSlice'
+import { patchFilters, setOpenSections } from '../store/icpSlice'
 import { store, useAppDispatch, useAppSelector } from '../store'
 
 const SEPARATORS = [',', ';', '\n']
 
 const toOptions = (items: string[]) => items.map((v) => ({ value: v, label: v }))
 
+/*
+ * These wrap antd controls. Form.Item passes `value` and `onChange` into them,
+ * so each one must forward its props to the control or the form stays empty.
+ */
+
 /** Free-text chip input; pasting a comma/semicolon/newline list splits into chips. */
-function Tags({ placeholder }: { placeholder?: string }) {
+function Tags(props: SelectProps) {
   return (
     <Select
       mode="tags"
       tokenSeparators={SEPARATORS}
-      placeholder={placeholder}
       open={false}
       suffixIcon={null}
       style={{ width: '100%' }}
+      {...props}
     />
   )
 }
 
-function Multi({ options, placeholder }: { options: { value: string; label: string }[]; placeholder?: string }) {
+function Multi(props: SelectProps) {
   return (
     <Select
       mode="multiple"
       allowClear
       showSearch
       optionFilterProp="label"
-      maxTagCount="responsive"
-      placeholder={placeholder}
-      options={options}
       style={{ width: '100%' }}
+      {...props}
     />
   )
 }
 
-function Check({ options }: { options: string[] }) {
-  return <Checkbox.Group options={options} />
+function Check(props: CheckboxGroupProps) {
+  return <Checkbox.Group {...props} />
 }
 
 interface Props {
@@ -50,6 +54,7 @@ interface Props {
 export function FilterForm({ form }: Props) {
   const dispatch = useAppDispatch()
   const filters = useAppSelector((s) => s.icp.filters)
+  const open = useAppSelector((s) => s.icp.open)
 
   const opts = useMemo(
     () => ({
@@ -78,7 +83,8 @@ export function FilterForm({ form }: Props) {
       onValuesChange={(changed) => dispatch(patchFilters(changed))}
     >
       <Collapse
-        defaultActiveKey={['person']}
+        activeKey={open}
+        onChange={(keys) => dispatch(setOpenSections((Array.isArray(keys) ? keys : [keys]) as SectionKey[]))}
         size="large"
         items={[
           {
