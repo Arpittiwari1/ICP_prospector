@@ -1,4 +1,4 @@
-import { BLITZ_DATA } from '../../src/data/blitzData'
+import { BLITZ_DATA } from '../../src/data/blitzData.js'
 
 const EMPLOYEE_RANGES = BLITZ_DATA.employeeRanges
 const SALES_REGIONS = BLITZ_DATA.salesRegions

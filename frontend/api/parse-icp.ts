@@ -1,4 +1,4 @@
-import { ParseError, parseIcp } from './_lib/parseIcp'
+import { ParseError, parseIcp } from './_lib/parseIcp.js'
 
 /** POST /api/parse-icp  { prompt } -> { filters, goal }. Runs server-side so the Ollama key stays secret. */
 export async function POST(request: Request) {
