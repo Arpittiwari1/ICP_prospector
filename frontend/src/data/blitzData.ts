@@ -1,4 +1,13 @@
-export const BLITZ_DATA = {
+export const BLITZ_DATA: {
+  industries: string[]
+  jobLevels: string[]
+  jobFunctions: string[]
+  employeeRanges: string[]
+  companyTypes: string[]
+  continents: string[]
+  salesRegions: string[]
+  countries: [string, string][]
+} = {
   "industries": [
     "Abrasives and Nonmetallic Minerals Manufacturing",
     "Accessible Architecture and Design",
